@@ -4,21 +4,8 @@ import httpx
 import os
 from typing import Optional
 from datetime import datetime
-from fastapi.middleware.cors import CORSMiddleware
-from tts_service import TTSService, TTSRequest
-from stt_service import transcribe_audio, STTRequest
-from llm_service import process_chat
 
 app = FastAPI(title="LLM Service")
-
-# Configuration CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 class Message(BaseModel):
     role: str
@@ -32,9 +19,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     timestamp: str
-
-# Initialisation des services
-tts_service = TTSService()
 
 async def get_ollama_response(messages: list[Message], temperature: float, max_tokens: int) -> str:
     ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
@@ -72,22 +56,6 @@ async def chat(request: ChatRequest):
             response=response_text,
             timestamp=datetime.utcnow().isoformat()
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/tts")
-async def text_to_speech(request: TTSRequest):
-    try:
-        filename = await tts_service.generate_speech(request.text, request.language)
-        return {"audio_url": f"/audio/{filename}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/stt")
-async def speech_to_text(request: STTRequest):
-    try:
-        response = await transcribe_audio(request.audio, request.language, request.model)
-        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
