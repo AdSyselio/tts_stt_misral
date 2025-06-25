@@ -6,7 +6,8 @@ param(
     [string]$RunPodEndpoint = "https://api.runpod.ai",
     [string]$ModelName = "mistral",
     [string]$AdminUsername = "admin",
-    [string]$AdminPassword = "changeme"
+    [string]$AdminPassword = "changeme",
+    [string]$SecretKey = "your-secret-key-here"
 )
 
 # Vérification des prérequis
@@ -33,6 +34,7 @@ RUNPOD_ENDPOINT=$RunPodEndpoint
 MODEL_NAME=$ModelName
 ADMIN_USERNAME=$AdminUsername
 ADMIN_PASSWORD=$AdminPassword
+SECRET_KEY=$SecretKey
 "@
 
 Set-Content -Path ".env" -Value $envContent
