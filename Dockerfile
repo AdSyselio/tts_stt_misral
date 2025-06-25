@@ -6,10 +6,20 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     ffmpeg \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Installation des dépendances Python
+# Installation des dépendances Python en plusieurs étapes
 COPY requirements.txt .
+
+# Installation des dépendances de base
+RUN pip install --no-cache-dir \
+    wheel \
+    setuptools \
+    ninja
+
+# Installation des dépendances du projet
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copie des fichiers du projet
