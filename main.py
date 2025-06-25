@@ -1,13 +1,21 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 import httpx
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from auth import Token, authenticate_user, create_access_token, get_current_user, TokenData, ACCESS_TOKEN_EXPIRE_MINUTES
+from tts_service import TTSRequest, TTSResponse, synthesize_text
+from stt_service import STTRequest, STTResponse, transcribe_audio
 
-app = FastAPI(title="LLM Service")
+app = FastAPI(
+    title="IA Bot - Core API",
+    docs_url=None,  # Désactive le endpoint Swagger par défaut
+    redoc_url=None  # Désactive le endpoint ReDoc par défaut
+)
 
 class Message(BaseModel):
     role: str
@@ -21,6 +29,11 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     timestamp: str
+
+class HomeResponse(BaseModel):
+    status: str
+    version: str
+    description: str
 
 async def get_ollama_response(messages: list[Message], temperature: float, max_tokens: int) -> str:
     ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
@@ -45,8 +58,18 @@ async def get_ollama_response(messages: list[Message], temperature: float, max_t
         except httpx.HTTPError as e:
             raise HTTPException(status_code=500, detail=f"Erreur Ollama: {str(e)}")
 
-@app.post("/token", response_model=Token)
+@app.get("/", response_model=HomeResponse)
+async def home():
+    """Page d'accueil Core"""
+    return HomeResponse(
+        status="online",
+        version="1.0.0",
+        description="Service principal LLM et orchestration pour RunPod"
+    )
+
+@app.post("/auth/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Authentification"""
     if not authenticate_user(form_data.username, form_data.password):
         raise HTTPException(
             status_code=401,
@@ -59,8 +82,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/llm/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, current_user: TokenData = Depends(get_current_user)):
+    """Chat avec Mistral"""
     try:
         response_text = await get_ollama_response(
             request.messages,
@@ -74,6 +98,59 @@ async def chat(request: ChatRequest, current_user: TokenData = Depends(get_curre
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/tts", response_model=TTSResponse)
+async def text_to_speech(request: TTSRequest, current_user: TokenData = Depends(get_current_user)):
+    """Conversion texte vers parole"""
+    try:
+        return await synthesize_text(
+            text=request.text,
+            language=request.language,
+            voice_id=request.voice_id,
+            speed=request.speed
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/stt", response_model=STTResponse)
+async def speech_to_text(request: STTRequest, current_user: TokenData = Depends(get_current_user)):
+    """Conversion parole vers texte"""
+    try:
+        return await transcribe_audio(
+            audio_base64=request.audio,
+            language=request.language,
+            model_name=request.model
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    """Documentation Swagger UI"""
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title="IA Bot - Core API - Documentation",
+        swagger_favicon_url="/favicon.ico"
+    )
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_html():
+    """Documentation ReDoc"""
+    return get_redoc_html(
+        openapi_url="/openapi.json",
+        title="IA Bot - Core API - Documentation",
+        redoc_favicon_url="/favicon.ico"
+    )
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_open_api_endpoint():
+    """OpenAPI Schema"""
+    return get_openapi(
+        title="IA Bot - Core API",
+        version="1.0.0",
+        description="Service principal LLM et orchestration pour RunPod",
+        routes=app.routes,
+    )
 
 if __name__ == "__main__":
     import uvicorn
