@@ -1,0 +1,8 @@
+{
+  "name": "runpod-scripts",
+  "version": "1.0.0",
+  "description": "Scripts utilitaires pour RunPod",
+  "scripts": {
+    "auto-config": "pwsh ./auto-config-runpod.ps1"
+  }
+} 
