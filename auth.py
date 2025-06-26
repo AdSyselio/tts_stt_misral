@@ -14,7 +14,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Configuration du hachage des mots de passe
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 class Token(BaseModel):
     access_token: str

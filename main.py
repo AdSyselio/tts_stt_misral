@@ -7,22 +7,20 @@ import httpx
 import os
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
+from fastapi.responses import Response
 from auth import Token, authenticate_user, create_access_token, get_current_user, TokenData, ACCESS_TOKEN_EXPIRE_MINUTES
 from tts_service import TTSRequest, TTSResponse, synthesize_text
 from stt_service import STTRequest, STTResponse, transcribe_audio
+from llm_service import Message, ChatRequest, get_ollama_response
+
+# Métriques Prometheus
+REQUESTS = Counter('http_requests_total', 'Total des requêtes HTTP', ['method', 'endpoint'])
+LATENCY = Histogram('http_request_duration_seconds', 'Latence des requêtes HTTP', ['method', 'endpoint'])
 
 app = FastAPI(
     title="IA Bot - Core API"
 )
-
-class Message(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    messages: list[Message]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 1000
 
 class ChatResponse(BaseModel):
     response: str
@@ -168,6 +166,24 @@ async def get_open_api_endpoint():
         description="Service principal LLM et orchestration pour RunPod",
         routes=app.routes,
     )
+
+@app.get("/metrics", tags=["Monitoring"])
+async def metrics():
+    """Métriques Prometheus"""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+@app.get("/health", tags=["Monitoring"])
+async def health_check():
+    """Vérification de santé"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "services": {
+            "llm": "ok",
+            "tts": "ok",
+            "stt": "ok"
+        }
+    }
 
 if __name__ == "__main__":
     import uvicorn
