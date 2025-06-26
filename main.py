@@ -97,9 +97,19 @@ async def chat(request: ChatRequest, current_user: TokenData = Depends(get_curre
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/tts", response_model=TTSResponse, tags=["Speech"])
+@app.post("/tts", response_model=TTSResponse, 
+    tags=["Speech"],
+    summary="Conversion texte vers parole",
+    description="Convertit du texte en audio en utilisant le modèle TTS Coqui"
+)
 async def text_to_speech(request: TTSRequest, current_user: TokenData = Depends(get_current_user)):
-    """Conversion texte vers parole"""
+    """
+    Conversion texte vers parole avec les paramètres suivants:
+    - **text**: Le texte à convertir en audio
+    - **language**: La langue du texte (par défaut: fr)
+    - **voice_id**: L'identifiant de la voix (optionnel)
+    - **speed**: La vitesse de la parole (par défaut: 1.0)
+    """
     try:
         return await synthesize_text(
             text=request.text,
@@ -110,9 +120,18 @@ async def text_to_speech(request: TTSRequest, current_user: TokenData = Depends(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/stt", response_model=STTResponse, tags=["Speech"])
+@app.post("/stt", response_model=STTResponse, 
+    tags=["Speech"],
+    summary="Conversion parole vers texte",
+    description="Convertit un fichier audio en texte en utilisant Whisper"
+)
 async def speech_to_text(request: STTRequest, current_user: TokenData = Depends(get_current_user)):
-    """Conversion parole vers texte"""
+    """
+    Conversion parole vers texte avec les paramètres suivants:
+    - **audio**: L'audio en base64
+    - **language**: La langue de l'audio (par défaut: fr)
+    - **model**: Le modèle Whisper à utiliser (par défaut: base)
+    """
     try:
         return await transcribe_audio(
             audio_base64=request.audio,
