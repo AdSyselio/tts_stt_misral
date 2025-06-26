@@ -28,5 +28,6 @@ COPY . .
 # Téléchargement des modèles
 RUN python -c "from TTS.api import TTS; TTS(model_name='tts_models/fr/css10/vits')"
 RUN python -c "import whisper; whisper.load_model('base')"
+EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
