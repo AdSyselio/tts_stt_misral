@@ -1,5 +1,5 @@
 # .github/workflows/docker-image.yml
-name: Build & Push Docker image
+name: Build & Push Docker image (cache)
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write        # nécessaire pour ghcr
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -19,10 +19,16 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}  # ou un PAT avec scope “write:packages”
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push image with cache
         uses: docker/build-push-action@v5
         with:
+          context: .
           push: true
           tags: ghcr.io/adsyelio/tts_stt_misral:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

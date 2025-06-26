@@ -1,5 +1,5 @@
-FROM pytorch/pytorch:2.1.1-cuda12.1-cudnn8-runtime
-
+# --- Étape 1 : dépendances --------------------------------
+FROM pytorch/pytorch:2.1.1-cuda12.1-cudnn8-runtime AS base
 WORKDIR /app
 
 # Installation des dépendances système
@@ -25,9 +25,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copie des fichiers du projet
 COPY . .
 
-# Téléchargement des modèles
-RUN python -c "from TTS.api import TTS; TTS(model_name='tts_models/fr/css10/vits')"
-RUN python -c "import whisper; whisper.load_model('base')"
+# --- Image finale -----------------------------------------
+# On utilise directement la couche 'base'. Les modèles TTS/Whisper
+# seront téléchargés au premier démarrage et mis en cache.
 EXPOSE 3000
-
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"] 
