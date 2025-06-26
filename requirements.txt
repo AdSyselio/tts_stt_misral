@@ -27,7 +27,7 @@ transformers==4.35.2
 
 # TTS
 TTS==0.21.1
-numpy==1.24.3
+numpy==1.22.0
 
 # STT
 openai-whisper==20231117
