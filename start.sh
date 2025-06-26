@@ -8,4 +8,4 @@ done
 
 # Démarrer le service FastAPI
 echo "Démarrage du service LLM..."
-exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload 
+exec uvicorn main:app --host 0.0.0.0 --port 3000 --reload 
