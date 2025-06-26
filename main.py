@@ -12,9 +12,7 @@ from tts_service import TTSRequest, TTSResponse, synthesize_text
 from stt_service import STTRequest, STTResponse, transcribe_audio
 
 app = FastAPI(
-    title="IA Bot - Core API",
-    docs_url=None,  # Désactive le endpoint Swagger par défaut
-    redoc_url=None  # Désactive le endpoint ReDoc par défaut
+    title="IA Bot - Core API"
 )
 
 class Message(BaseModel):
@@ -99,7 +97,7 @@ async def chat(request: ChatRequest, current_user: TokenData = Depends(get_curre
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/tts", response_model=TTSResponse)
+@app.post("/tts", response_model=TTSResponse, tags=["Speech"])
 async def text_to_speech(request: TTSRequest, current_user: TokenData = Depends(get_current_user)):
     """Conversion texte vers parole"""
     try:
@@ -112,7 +110,7 @@ async def text_to_speech(request: TTSRequest, current_user: TokenData = Depends(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/stt", response_model=STTResponse)
+@app.post("/stt", response_model=STTResponse, tags=["Speech"])
 async def speech_to_text(request: STTRequest, current_user: TokenData = Depends(get_current_user)):
     """Conversion parole vers texte"""
     try:
