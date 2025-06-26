@@ -2,8 +2,9 @@
 FROM pytorch/pytorch:2.1.1-cuda12.1-cudnn8-runtime AS base
 WORKDIR /app
 
-# Installation des dépendances système
-RUN apt-get update && apt-get install -y \
+# Installation des dépendances système...
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     ffmpeg \
     build-essential \
