@@ -29,5 +29,5 @@ COPY . .
 # --- Image finale -----------------------------------------
 # On utilise directement la couche 'base'. Les modèles TTS/Whisper
 # seront téléchargés au premier démarrage et mis en cache.
-EXPOSE 3000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"] 
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
