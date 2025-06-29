@@ -131,6 +131,7 @@ async def speech_to_text(request: STTRequest, current_user: TokenData = Depends(
     - **model**: Le modèle Whisper à utiliser (par défaut: base)
     """
     try:
+        
         return await transcribe_audio(
             audio_base64=request.audio,
             language=request.language,
@@ -184,7 +185,3 @@ async def health_check():
             "stt": "ok"
         }
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3000) 

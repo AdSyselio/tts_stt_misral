@@ -35,16 +35,20 @@ PY
 COPY . .
 
 # --- Installation d'Ollama --------------------------------
-RUN curl -L https://ollama.com/download/Ollama-linux-x64 \
+RUN curl -L https://ollama.com/download/Ollama-linux-cuda \
        -o /usr/local/bin/ollama && \
     chmod +x /usr/local/bin/ollama
 
 # Pré-téléchargement du modèle Mistral 7B (optionnel, ~7 Go)
-RUN ollama run mistral --prompt "ping" || true
+RUN ollama pull mistral || true      # télécharge si possible, sinon continue
 
 # --- Image finale -----------------------------------------
 # On utilise directement la couche 'base'. Les modèles TTS/Whisper
 # seront téléchargés au premier démarrage et mis en cache.
 EXPOSE 8000
 EXPOSE 11434
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+CMD ["/start.sh"] 
