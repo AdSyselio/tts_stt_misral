@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel
 import base64
 import io
+import soundfile as sf
 
 class TTSRequest(BaseModel):
     text: str
@@ -33,8 +34,9 @@ async def synthesize_text(text: str, language: str = "fr", voice_id: Optional[st
     if speed != 1.0:
         wav = tts.adjust_speed(wav, speed)
     
-    # Sauvegarde dans le buffer
-    tts.save_wav(wav, audio_buffer)
+    # Sauvegarde dans le buffer (TTS 0.21.x n'expose plus save_wav)
+    sf.write(audio_buffer, wav, tts.synthesizer.output_sample_rate, format='WAV')
+    audio_buffer.seek(0)
     
     # Conversion en base64
     audio_base64 = base64.b64encode(audio_buffer.getvalue()).decode()
