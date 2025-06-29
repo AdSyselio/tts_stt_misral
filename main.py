@@ -13,6 +13,7 @@ from auth import Token, authenticate_user, create_access_token, get_current_user
 from tts_service import TTSRequest, TTSResponse, synthesize_text
 from stt_service import STTRequest, STTResponse, transcribe_audio
 from llm_service import Message, ChatRequest, get_ollama_response
+import uuid
 
 # Métriques Prometheus
 REQUESTS = Counter('http_requests_total', 'Total des requêtes HTTP', ['method', 'endpoint'])
@@ -185,3 +186,58 @@ async def health_check():
             "stt": "ok"
         }
     }
+
+# -----------------------------------------------------------------------------
+# Route de compatibilité OpenAI (n8n AI Agent)
+# -----------------------------------------------------------------------------
+
+# L'AI Agent d'n8n s'attend à un endpoint POST /v1/chat/completions au format
+# OpenAI. Nous l'implémentons en proxy vers get_ollama_response.
+
+@app.post("/v1/chat/completions", tags=["Compatibility"], include_in_schema=False)
+async def openai_compat(payload: Dict[str, Any], current_user: TokenData = Depends(get_current_user)):
+    """Compatibilité OpenAI v1 pour Ollama.
+
+    Exemple de payload attendu :
+    {
+      "model": "mistral",
+      "messages": [
+        {"role": "user", "content": "Bonjour"}
+      ],
+      "temperature": 0.7,
+      "max_tokens": 1024
+    }
+    """
+
+    try:
+        messages_in = payload.get("messages", [])
+        model = payload.get("model", os.getenv("MODEL_NAME", "mistral"))
+        temperature = payload.get("temperature", 0.7)
+        max_tokens = payload.get("max_tokens", 1024)
+
+        # Conversion vers notre modèle Message
+        msg_objs = [Message(role=m["role"], content=m["content"]) for m in messages_in]
+
+        answer = await get_ollama_response(msg_objs, temperature, max_tokens)
+
+        # Réponse au format OpenAI
+        return {
+            "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+            "object": "chat.completion",
+            "created": int(datetime.utcnow().timestamp()),
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": answer},
+                    "finish_reason": "stop"
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
