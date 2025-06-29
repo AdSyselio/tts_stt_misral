@@ -5,6 +5,7 @@ import numpy as np
 import soundfile as sf
 import torch
 import whisper
+import torchaudio
 from pydantic import BaseModel
 from typing import Optional
 
@@ -27,7 +28,7 @@ async def transcribe_audio(
     audio_bytes = base64.b64decode(audio_base64)
     audio_buffer = io.BytesIO(audio_bytes)
 
-    # --- lecture de l’audio ---
+    # --- lecture de l'audio ---
     audio_array, sample_rate = sf.read(audio_buffer)          # float64 par défaut
     audio_array = audio_array.astype(np.float32)              # → float32 obligatoire
 
@@ -37,7 +38,9 @@ async def transcribe_audio(
 
     # (facultatif) resample à 16 kHz si besoin
     if sample_rate != 16000:
-        audio_array = librosa.resample(audio_array, orig_sr=sample_rate, target_sr=16000)
+        resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
+        audio_tensor = torch.from_numpy(audio_array)
+        audio_array = resampler(audio_tensor).numpy()
         sample_rate = 16000
 
     # --- chargement du modèle ---
