@@ -21,8 +21,7 @@ async def synthesize_text(text: str, language: str = "fr", voice_id: Optional[st
     """Synthétise du texte en audio avec Coqui TTS."""
     
     # Initialisation de Coqui TTS
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tts = TTS(model_name="tts_models/fr/css10/vits", device=device)
+    tts = TTS(model_name="tts_models/fr/css10/vits", gpu=torch.cuda.is_available())
     
     # Buffer pour l'audio
     audio_buffer = io.BytesIO()
