@@ -11,7 +11,11 @@ until curl -s http://localhost:11434/api/tags > /dev/null; do
   sleep 1
 done
 echo "Ollama prêt ✅"
-
+# ➜ S'assurer que le modèle est dispo
+if ! ollama list | grep -q '^mistral'; then
+  echo "Téléchargement du modèle mistral..."
+  ollama pull mistral
+fi
 # 3. Démarrer FastAPI
 echo "Démarrage du service LLM..."
 exec uvicorn main:app --host 0.0.0.0 --port 8000 
