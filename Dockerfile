@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     build-essential \
     python3-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Installation des dépendances Python en plusieurs étapes
