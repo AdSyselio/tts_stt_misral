@@ -46,4 +46,5 @@ RUN ollama run mistral --prompt "ping" || true
 # On utilise directement la couche 'base'. Les modèles TTS/Whisper
 # seront téléchargés au premier démarrage et mis en cache.
 EXPOSE 8000
+EXPOSE 11434
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
