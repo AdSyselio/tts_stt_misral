@@ -33,6 +33,14 @@ PY
 # Copie des fichiers du projet
 COPY . .
 
+# --- Installation d'Ollama --------------------------------
+RUN curl -L https://ollama.com/download/Ollama-linux-x64 \
+       -o /usr/local/bin/ollama && \
+    chmod +x /usr/local/bin/ollama
+
+# Pré-téléchargement du modèle Mistral 7B (optionnel, ~7 Go)
+RUN ollama run mistral --prompt "ping" || true
+
 # --- Image finale -----------------------------------------
 # On utilise directement la couche 'base'. Les modèles TTS/Whisper
 # seront téléchargés au premier démarrage et mis en cache.
