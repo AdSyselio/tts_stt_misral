@@ -256,6 +256,24 @@ async def openai_compat(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/v1/chat/completions", include_in_schema=False)
+async def openai_compat_get(
+    model: str,
+    prompt: str,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+):
+    """Fallback GET pour anciennes versions n8n (Ollama Chat Model)."""
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    return await openai_compat(payload, authorization, x_api_key)
+
 # -----------------------------------------------------------------------------
 # Endpoint /v1/models  (utilisé par n8n pour tester la connexion OpenAI)
 # -----------------------------------------------------------------------------
