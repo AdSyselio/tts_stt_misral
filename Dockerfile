@@ -23,6 +23,13 @@ RUN pip install --no-cache-dir \
 # Installation des dépendances du projet
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Téléchargement du modèle TTS (cache dans ~/.local/share/tts)
+RUN python - <<'PY'
+from TTS.utils.manage import ModelManager
+mm = ModelManager()
+mm.download_model("tts_models/fr/css10/vits")
+PY
+
 # Copie des fichiers du projet
 COPY . .
 
