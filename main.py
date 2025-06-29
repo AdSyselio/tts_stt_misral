@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
@@ -194,20 +194,34 @@ async def health_check():
 # L'AI Agent d'n8n s'attend à un endpoint POST /v1/chat/completions au format
 # OpenAI. Nous l'implémentons en proxy vers get_ollama_response.
 
+# Permettre l'auth par clé secrète RunPod (Bearer <SECRET_KEY> ou X-API-KEY)
+
 @app.post("/v1/chat/completions", tags=["Compatibility"], include_in_schema=False)
-async def openai_compat(payload: Dict[str, Any], current_user: TokenData = Depends(get_current_user)):
+async def openai_compat(
+    payload: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+):
     """Compatibilité OpenAI v1 pour Ollama.
 
-    Exemple de payload attendu :
-    {
-      "model": "mistral",
-      "messages": [
-        {"role": "user", "content": "Bonjour"}
-      ],
-      "temperature": 0.7,
-      "max_tokens": 1024
-    }
+    Authentification :
+    • JWT classique (Authorization: Bearer <token>)
+    • Clé secrète RunPod (SECRET_KEY) passée :
+        – soit dans l'en-tête `Authorization: Bearer <SECRET_KEY>`
+        – soit dans l'en-tête `X-API-KEY: <SECRET_KEY>`
     """
+
+    # --- Auth ----------------------------------------------------------------
+    secret_key = os.getenv("SECRET_KEY", "your-secret-key-here")
+
+    provided_token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        provided_token = authorization.split(" ", 1)[1]
+    elif x_api_key:
+        provided_token = x_api_key
+
+    if provided_token != secret_key:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     try:
         messages_in = payload.get("messages", [])
@@ -241,3 +255,40 @@ async def openai_compat(payload: Dict[str, Any], current_user: TokenData = Depen
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# -----------------------------------------------------------------------------
+# Endpoint /v1/models  (utilisé par n8n pour tester la connexion OpenAI)
+# -----------------------------------------------------------------------------
+
+@app.get("/v1/models", tags=["Compatibility"], include_in_schema=False)
+async def list_models(
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+):
+    """Renvoie la liste des modèles disponibles au format OpenAI.
+
+    Nécessaire pour que le test de connexion OpenAI (n8n) passe.
+    """
+
+    secret_key = os.getenv("SECRET_KEY", "your-secret-key-here")
+    provided = None
+    if authorization and authorization.lower().startswith("bearer "):
+        provided = authorization.split(" ", 1)[1]
+    elif x_api_key:
+        provided = x_api_key
+
+    if provided != secret_key:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    model_name = os.getenv("MODEL_NAME", "mistral")
+    return {
+        "data": [
+            {
+                "id": model_name,
+                "object": "model",
+                "created": int(datetime.utcnow().timestamp()),
+                "owned_by": "runpod-local"
+            }
+        ],
+        "object": "list"
+    }
