@@ -24,12 +24,29 @@ RUN pip install --no-cache-dir \
 # Installation des dépendances du projet
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Téléchargement du modèle TTS (cache dans ~/.local/share/tts)
+# Téléchargement robuste des modèles (3 tentatives)
 RUN python - <<'PY'
+import time, sys
 from TTS.utils.manage import ModelManager
+
+MODELS = [
+    "tts_models/fr/mai/vits",
+    "tts_models/fr/css10/vits"
+]
+
 mm = ModelManager()
-mm.download_model("tts_models/fr/mai/vits")
-mm.download_model("tts_models/fr/css10/vits")
+
+for m in MODELS:
+    for attempt in range(1, 4):
+        try:
+            print(f"⏬  Téléchargement {m} (essai {attempt})")
+            mm.download_model(m)
+            break
+        except Exception as e:
+            print(f"⚠️  Échec {attempt} pour {m}: {e}")
+            if attempt == 3:
+                sys.exit(1)
+            time.sleep(10)
 PY
 
 # Copie des fichiers du projet
