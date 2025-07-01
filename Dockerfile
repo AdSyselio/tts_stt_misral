@@ -1,5 +1,5 @@
 # --- Étape 1 : dépendances --------------------------------
-FROM ghcr.io/pytorch/pytorch:2.1.1-cuda12.1-cudnn8-runtime AS base
+FROM pytorch/pytorch:2.1.1-cuda12.1-cudnn8-runtime AS base
 WORKDIR /app
 
 # Installation des dépendances système...
