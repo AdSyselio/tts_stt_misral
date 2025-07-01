@@ -310,3 +310,27 @@ async def list_models(
         ],
         "object": "list"
     }
+
+# -- Variant with trailing slash ------------------------------------------------
+
+@app.get("/v1/models/", include_in_schema=False)
+async def list_models_slash(authorization: Optional[str] = Header(None), x_api_key: Optional[str] = Header(None)):
+    """Alias avec slash final pour compatibilité clients."""
+    return await list_models(authorization, x_api_key)
+
+# Alias pour /v1/chat/completions/ (POST et GET) --------------------------------
+
+@app.post("/v1/chat/completions/", include_in_schema=False)
+async def openai_compat_post_slash(payload: Dict[str, Any], authorization: Optional[str] = Header(None), x_api_key: Optional[str] = Header(None)):
+    return await openai_compat(payload, authorization, x_api_key)
+
+@app.get("/v1/chat/completions/", include_in_schema=False)
+async def openai_compat_get_slash(
+    model: str,
+    prompt: str,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+):
+    return await openai_compat_get(model, prompt, authorization, x_api_key, temperature, max_tokens)
