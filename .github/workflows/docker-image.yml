@@ -30,7 +30,7 @@ jobs:
 
       # Connexion Docker Hub (optionnelle)
       - name: Docker Hub login
-        if: ${{ secrets.DOCKERHUB_USER != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ secrets.DOCKERHUB_USER && secrets.DOCKERHUB_TOKEN }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
