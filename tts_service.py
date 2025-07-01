@@ -28,7 +28,12 @@ async def synthesize_text(text: str, language: str = "fr", voice_id: Optional[st
     # Mise en cache d'une instance par process afin d'éviter un rechargement coûteux
     global _TTS_INSTANCE  # type: ignore
     if "_TTS_INSTANCE" not in globals() or getattr(_TTS_INSTANCE, "model_name", None) != model_name_env:
-        _TTS_INSTANCE = TTS(model_name=model_name_env, gpu=torch.cuda.is_available())
+        try:
+            _TTS_INSTANCE = TTS(model_name=model_name_env, gpu=torch.cuda.is_available())
+        except Exception as err:
+            # secours : revenir au modèle CSS10 si le modèle principal échoue (souvent pb de réseau)
+            fallback = "tts_models/fr/css10/vits"
+            _TTS_INSTANCE = TTS(model_name=fallback, gpu=torch.cuda.is_available())
 
     tts = _TTS_INSTANCE
     
