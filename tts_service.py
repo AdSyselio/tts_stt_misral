@@ -21,14 +21,22 @@ class TTSResponse(BaseModel):
 async def synthesize_text(text: str, language: str = "fr", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
     """Synthétise du texte en audio avec Coqui TTS."""
     
-    # Initialisation de Coqui TTS
-    tts = TTS(model_name="tts_models/fr/css10/vits", gpu=torch.cuda.is_available())
+    # Sélection du modèle TTS (variable d'environnement au besoin)
+    # Par défaut : "tts_models/fr/mai/vits" (voix féminine plus jeune que CSS10)
+    model_name_env = os.getenv("TTS_MODEL_NAME", "tts_models/fr/mai/vits")
+
+    # Mise en cache d'une instance par process afin d'éviter un rechargement coûteux
+    global _TTS_INSTANCE  # type: ignore
+    if "_TTS_INSTANCE" not in globals() or getattr(_TTS_INSTANCE, "model_name", None) != model_name_env:
+        _TTS_INSTANCE = TTS(model_name=model_name_env, gpu=torch.cuda.is_available())
+
+    tts = _TTS_INSTANCE
     
     # Buffer pour l'audio
     audio_buffer = io.BytesIO()
     
     # Génération audio
-    wav = tts.tts(text=text, speaker=voice_id)
+    wav = tts.tts(text=text, speaker=voice_id)  # voice_id ignoré si le modèle n'est pas multi-speaker
     
     # Ajustement de la vitesse si nécessaire
     if speed != 1.0:
