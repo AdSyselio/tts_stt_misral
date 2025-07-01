@@ -10,7 +10,7 @@ import soundfile as sf
 class TTSRequest(BaseModel):
     text: str
     language: str = "fr"
-    model: str = "mai"     # "mai" ou "css10"
+    model: str = "siwis"   # "siwis", "css10" (ou "mai" pour compat.)
     voice_id: Optional[str] = None
     speed: float = 1.0
     
@@ -20,15 +20,18 @@ class TTSResponse(BaseModel):
     format: str = "wav"
     duration: float
 
-async def synthesize_text(text: str, language: str = "fr", model: str = "mai", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
+async def synthesize_text(text: str, language: str = "fr", model: str = "siwis", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
     """Synthétise du texte en audio avec Coqui TTS."""
     
-    # Priorité : paramètre explicite > variable d'environnement > défaut
+    # Correspondance des codes simples -> noms de modèles Coqui TTS
     param_map = {
-        "mai": "tts_models/fr/mai/vits",
-        "css10": "tts_models/fr/css10/vits"
+        "siwis": "tts_models/fr/siwis/vits",   # voix féminine neutre (accent suisse-français)
+        "css10": "tts_models/fr/css10/vits",  # voix féminine adulte
+        "mai": "tts_models/fr/siwis/vits"     # alias pour compatibilité (l'ancien modèle mai/vits est indisponible)
     }
-    model_name_env = param_map.get(model, os.getenv("TTS_MODEL_NAME", "tts_models/fr/mai/vits"))
+
+    # Priorité : paramètre explicite > variable d'environnement > défaut
+    model_name_env = param_map.get(model, os.getenv("TTS_MODEL_NAME", "tts_models/fr/siwis/vits"))
 
     # Mise en cache d'une instance par process afin d'éviter un rechargement coûteux
     global _TTS_INSTANCE  # type: ignore
