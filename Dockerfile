@@ -29,6 +29,7 @@ RUN python - <<'PY'
 from TTS.utils.manage import ModelManager
 mm = ModelManager()
 mm.download_model("tts_models/fr/mai/vits")
+mm.download_model("tts_models/fr/css10/vits")
 PY
 
 # Copie des fichiers du projet

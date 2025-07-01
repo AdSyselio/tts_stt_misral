@@ -10,20 +10,25 @@ import soundfile as sf
 class TTSRequest(BaseModel):
     text: str
     language: str = "fr"
+    model: str = "mai"     # "mai" ou "css10"
     voice_id: Optional[str] = None
     speed: float = 1.0
+    
 
 class TTSResponse(BaseModel):
     audio: str  # base64
     format: str = "wav"
     duration: float
 
-async def synthesize_text(text: str, language: str = "fr", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
+async def synthesize_text(text: str, language: str = "fr", model: str = "mai", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
     """Synthétise du texte en audio avec Coqui TTS."""
     
-    # Sélection du modèle TTS (variable d'environnement au besoin)
-    # Par défaut : "tts_models/fr/mai/vits" (voix féminine plus jeune que CSS10)
-    model_name_env = os.getenv("TTS_MODEL_NAME", "tts_models/fr/mai/vits")
+    # Priorité : paramètre explicite > variable d'environnement > défaut
+    param_map = {
+        "mai": "tts_models/fr/mai/vits",
+        "css10": "tts_models/fr/css10/vits"
+    }
+    model_name_env = param_map.get(model, os.getenv("TTS_MODEL_NAME", "tts_models/fr/mai/vits"))
 
     # Mise en cache d'une instance par process afin d'éviter un rechargement coûteux
     global _TTS_INSTANCE  # type: ignore
@@ -41,7 +46,7 @@ async def synthesize_text(text: str, language: str = "fr", voice_id: Optional[st
     audio_buffer = io.BytesIO()
     
     # Génération audio
-    wav = tts.tts(text=text, speaker=voice_id)  # voice_id ignoré si le modèle n'est pas multi-speaker
+    wav = tts.tts(text=text, speaker=voice_id)
     
     # Ajustement de la vitesse si nécessaire
     if speed != 1.0:
