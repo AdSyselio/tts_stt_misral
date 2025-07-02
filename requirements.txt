@@ -27,8 +27,7 @@ transformers==4.35.2
 
 # TTS
 TTS==0.22.0
-# Version mini compatible Torch/CUDA ; requise par TTS 0.22
-numpy==1.23.5
+numpy==1.22.0
 
 # STT
 openai-whisper==20231117
