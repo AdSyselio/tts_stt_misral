@@ -2,6 +2,9 @@
 FROM pytorch/pytorch:2.1.1-cuda12.1-cudnn8-runtime AS base
 WORKDIR /app
 
+# Accepte automatiquement les CGU Coqui (XTTS)
+ENV COQUI_TOS_AGREED=1
+
 # Installation des dépendances système...
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
