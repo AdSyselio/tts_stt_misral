@@ -13,6 +13,7 @@ from auth import Token, authenticate_user, create_access_token, get_current_user
 from tts_service import TTSRequest, TTSResponse, synthesize_text
 from stt_service import STTRequest, STTResponse, transcribe_audio
 from llm_service import Message, ChatRequest, get_ollama_response
+from voice_service import save_voice_sample, delete_voice, list_voices
 import uuid
 
 # Métriques Prometheus
@@ -334,3 +335,31 @@ async def openai_compat_get_slash(
     max_tokens: int = 1024,
 ):
     return await openai_compat_get(model, prompt, authorization, x_api_key, temperature, max_tokens)
+
+# -----------------------------------------------------------------------------
+# Gestion des voix clonées (XTTS)
+# -----------------------------------------------------------------------------
+
+class VoiceUploadRequest(BaseModel):
+    name: Optional[str] = None       # identifiant souhaité (optionnel)
+    audio: str                       # wav ou mp3 en base64 (≥ 5 secondes recommandées)
+
+class VoiceUploadResponse(BaseModel):
+    voice_id: str
+
+@app.post("/voices", tags=["Voices"], response_model=VoiceUploadResponse)
+async def upload_voice(req: VoiceUploadRequest, current_user: TokenData = Depends(get_current_user)):
+    """Upload et enregistre un échantillon pour XTTS."""
+    vid = save_voice_sample(req.audio, req.name)
+    return VoiceUploadResponse(voice_id=vid)
+
+@app.get("/voices", tags=["Voices"], response_model=list)
+async def list_available_voices(current_user: TokenData = Depends(get_current_user)):
+    """Liste des voix clonées disponibles."""
+    return list_voices()
+
+@app.delete("/voices/{voice_id}", tags=["Voices"])
+async def remove_voice(voice_id: str, current_user: TokenData = Depends(get_current_user)):
+    """Supprime un échantillon de voix."""
+    delete_voice(voice_id)
+    return {"status": "deleted", "voice_id": voice_id}

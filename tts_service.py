@@ -20,13 +20,14 @@ class TTSResponse(BaseModel):
     format: str = "wav"
     duration: float
 
-async def synthesize_text(text: str, language: str = "fr", model: str = "siwis", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
+async def synthesize_text(text: str, language: str = "fr", model: str = "mms", voice_id: Optional[str] = None, speed: float = 1.0) -> TTSResponse:
     """Synthétise du texte en audio avec Coqui TTS."""
     
     # Correspondance des codes simples -> noms de modèles Coqui TTS
     param_map = {
-        "mms": "facebook/mms-tts-fra",          # modèle MMS VITS 16 kHz (accent neutre)
-        "css10": "tts_models/fr/css10/vits"     # voix féminine adulte (CSS10)
+        "mms": "facebook/mms-tts-fra",              # modèle MMS VITS 16 kHz (accent neutre)
+        "css10": "tts_models/fr/css10/vits",        # voix féminine adulte (CSS10)
+        "xtts": "tts_models/multilingual/multi-dataset/xtts_v2"  # modèle multilingue + clonage
     }
 
     # Priorité : paramètre explicite > variable d'environnement > défaut
@@ -48,7 +49,13 @@ async def synthesize_text(text: str, language: str = "fr", model: str = "siwis",
     audio_buffer = io.BytesIO()
     
     # Génération audio
-    wav = tts.tts(text=text, speaker=voice_id)
+    # pour XTTS, on passe le chemin du wav cloné si voice_id référencé
+    if model == "xtts" and voice_id:
+        from voice_service import _voice_path
+        speaker_wav = str(_voice_path(voice_id)) if os.path.exists(_voice_path(voice_id)) else None
+        wav = tts.tts(text=text, speaker_wav=speaker_wav)
+    else:
+        wav = tts.tts(text=text, speaker=voice_id)
     
     # Ajustement de la vitesse si nécessaire
     if speed != 1.0:
