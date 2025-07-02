@@ -31,7 +31,8 @@ from TTS.utils.manage import ModelManager
 
 MODELS = [
     "tts_models/fr/siwis/vits",
-    "tts_models/fr/css10/vits"
+    "tts_models/fr/css10/vits",
+    "facebook/mms-tts-fra"
 ]
 
 mm = ModelManager()

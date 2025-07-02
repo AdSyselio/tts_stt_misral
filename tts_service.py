@@ -25,9 +25,10 @@ async def synthesize_text(text: str, language: str = "fr", model: str = "siwis",
     
     # Correspondance des codes simples -> noms de modèles Coqui TTS
     param_map = {
-        "siwis": "tts_models/fr/siwis/vits",   # voix féminine neutre (accent suisse-français)
-        "css10": "tts_models/fr/css10/vits",  # voix féminine adulte
-        "mai": "tts_models/fr/siwis/vits"     # alias pour compatibilité (l'ancien modèle mai/vits est indisponible)
+        "siwis": "tts_models/fr/siwis/vits",    # voix féminine neutre (accent suisse-français)
+        "css10": "tts_models/fr/css10/vits",    # voix féminine adulte (CSS10)
+        "mms": "facebook/mms-tts-fra",          # modèle MMS VITS 16 kHz (accent neutre)
+        "mai": "tts_models/fr/siwis/vits"       # alias rétro-compatibilité
     }
 
     # Priorité : paramètre explicite > variable d'environnement > défaut
