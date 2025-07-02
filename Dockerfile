@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Téléchargement robuste des modèles (3 tentatives)
 RUN python - <<'PY'
-import time, sys
+import time, sys, os
 from TTS.utils.manage import ModelManager
 
 MODELS = [
@@ -41,7 +41,12 @@ for m in MODELS:
     for attempt in range(1, 4):
         try:
             print(f"⏬  Téléchargement {m} (essai {attempt})")
-            mm.download_model(m)
+            if m.startswith("facebook/"):
+                # Pas géré par ModelManager → on passe par HuggingFace Hub
+                from huggingface_hub import snapshot_download
+                snapshot_download(repo_id=m, cache_dir=os.path.expanduser("~/.cache/tts"))
+            else:
+                mm.download_model(m)
             break
         except Exception as e:
             print(f"⚠️  Échec {attempt} pour {m}: {e}")
