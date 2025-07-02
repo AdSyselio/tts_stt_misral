@@ -363,3 +363,54 @@ async def remove_voice(voice_id: str, current_user: TokenData = Depends(get_curr
     """Supprime un échantillon de voix."""
     delete_voice(voice_id)
     return {"status": "deleted", "voice_id": voice_id}
+
+# -----------------------------------------------------------------------------
+# Route de compatibilité Ollama native (/api/chat)
+# -----------------------------------------------------------------------------
+
+@app.post("/api/chat", tags=["Compatibility"], include_in_schema=False)
+async def ollama_native_chat(payload: Dict[str, Any]):
+    """Compatibilité avec l'endpoint natif d'Ollama (/api/chat).
+
+    Cette route attend un JSON conforme à l'API Ollama :
+    {
+        "model": "mistral",
+        "messages": [...],
+        "options": {"temperature": 0.7, "num_predict": 1024}
+    }
+    Elle renvoie la réponse dans le même format qu'Ollama afin que les
+    intégrations prévues (par ex. le n8n « Ollama Chat Model ») fonctionnent
+    sans modification côté client.
+    """
+    # --- Extraction des paramètres ---
+    try:
+        msgs_in = payload.get("messages", [])
+        if not isinstance(msgs_in, list):
+            raise ValueError("'messages' doit être une liste")
+
+        temperature = (
+            payload.get("options", {}).get("temperature")
+            or payload.get("temperature", 0.7)
+        )
+        max_tokens = (
+            payload.get("options", {}).get("num_predict")
+            or payload.get("max_tokens", 1024)
+        )
+
+        messages = [Message(role=m["role"], content=m["content"]) for m in msgs_in]
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=str(err))
+
+    # --- Appel du backend Ollama ---
+    answer = await get_ollama_response(messages, temperature, max_tokens)
+
+    # --- Réponse conforme Ollama ---
+    return {
+        "model": payload.get("model", os.getenv("MODEL_NAME", "mistral")),
+        "created_at": datetime.utcnow().isoformat(),
+        "message": {
+            "role": "assistant",
+            "content": answer,
+        },
+        "done": True,
+    }
