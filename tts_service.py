@@ -10,7 +10,7 @@ import soundfile as sf
 class TTSRequest(BaseModel):
     text: str
     language: str = "fr"
-    model: str = "siwis"   # "siwis", "css10" (ou "mai" pour compat.)
+    model: str = "mms"   # "mms" (par défaut) ou "css10"
     voice_id: Optional[str] = None
     speed: float = 1.0
     
@@ -25,14 +25,12 @@ async def synthesize_text(text: str, language: str = "fr", model: str = "siwis",
     
     # Correspondance des codes simples -> noms de modèles Coqui TTS
     param_map = {
-        "siwis": "tts_models/fr/siwis/vits",    # voix féminine neutre (accent suisse-français)
-        "css10": "tts_models/fr/css10/vits",    # voix féminine adulte (CSS10)
         "mms": "facebook/mms-tts-fra",          # modèle MMS VITS 16 kHz (accent neutre)
-        "mai": "tts_models/fr/siwis/vits"       # alias rétro-compatibilité
+        "css10": "tts_models/fr/css10/vits"     # voix féminine adulte (CSS10)
     }
 
     # Priorité : paramètre explicite > variable d'environnement > défaut
-    model_name_env = param_map.get(model, os.getenv("TTS_MODEL_NAME", "tts_models/fr/siwis/vits"))
+    model_name_env = param_map.get(model, os.getenv("TTS_MODEL_NAME", "facebook/mms-tts-fra"))
 
     # Mise en cache d'une instance par process afin d'éviter un rechargement coûteux
     global _TTS_INSTANCE  # type: ignore
@@ -40,7 +38,7 @@ async def synthesize_text(text: str, language: str = "fr", model: str = "siwis",
         try:
             _TTS_INSTANCE = TTS(model_name=model_name_env, gpu=torch.cuda.is_available())
         except Exception as err:
-            # secours : revenir au modèle CSS10 si le modèle principal échoue (souvent pb de réseau)
+            # secours : revenir au modèle CSS10 si le modèle principal échoue
             fallback = "tts_models/fr/css10/vits"
             _TTS_INSTANCE = TTS(model_name=fallback, gpu=torch.cuda.is_available())
 
