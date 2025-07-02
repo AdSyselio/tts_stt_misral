@@ -33,9 +33,19 @@ class HomeResponse(BaseModel):
     version: str
     description: str
 
-async def get_ollama_response(messages: list[Message], temperature: float, max_tokens: int) -> str:
+async def get_ollama_response(
+    messages: list[Message],
+    temperature: float,
+    max_tokens: int,
+    model_name: str | None = None,
+) -> str:
+    """Appelle l'API Ollama et renvoie la réponse.
+
+    Si *model_name* est fourni, on l'utilise ; sinon on retombe sur la variable
+    d'environnement MODEL_NAME ou, à défaut, « mistral »."""
+
     ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
-    model_name = os.getenv("MODEL_NAME", "mistral")
+    model_name = model_name or os.getenv("MODEL_NAME", "mistral")
     
     async with httpx.AsyncClient() as client:
         try:
@@ -233,7 +243,7 @@ async def openai_compat(
         # Conversion vers notre modèle Message
         msg_objs = [Message(role=m["role"], content=m["content"]) for m in messages_in]
 
-        answer = await get_ollama_response(msg_objs, temperature, max_tokens)
+        answer = await get_ollama_response(msg_objs, temperature, max_tokens, model)
 
         # Réponse au format OpenAI
         return {
@@ -402,11 +412,12 @@ async def ollama_native_chat(payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail=str(err))
 
     # --- Appel du backend Ollama ---
-    answer = await get_ollama_response(messages, temperature, max_tokens)
+    model_req = payload.get("model")
+    answer = await get_ollama_response(messages, temperature, max_tokens, model_req)
 
     # --- Réponse conforme Ollama ---
     return {
-        "model": payload.get("model", os.getenv("MODEL_NAME", "mistral")),
+        "model": model_req or os.getenv("MODEL_NAME", "mistral"),
         "created_at": datetime.utcnow().isoformat(),
         "message": {
             "role": "assistant",
@@ -414,3 +425,23 @@ async def ollama_native_chat(payload: Dict[str, Any]):
         },
         "done": True,
     }
+
+# -----------------------------------------------------------------------------
+# Route de compatibilité Ollama pour la liste des modèles (/api/tags)
+# -----------------------------------------------------------------------------
+
+@app.get("/api/tags", tags=["Compatibility"], include_in_schema=False)
+async def ollama_native_tags():
+    """Renvoie la liste des modèles disponibles depuis l'instance Ollama.
+
+    Cette route est appelée par les clients comme n8n pour remplir le menu
+    déroulant des modèles.
+    """
+    ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{ollama_host}/api/tags", timeout=10.0)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPError as err:
+            raise HTTPException(status_code=500, detail=f"Erreur Ollama: {err}")
