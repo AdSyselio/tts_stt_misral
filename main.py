@@ -33,6 +33,13 @@ class HomeResponse(BaseModel):
     version: str
     description: str
 
+def _ollama_base() -> str:
+    """Renvoie l'URL de base Ollama avec schéma http:// si nécessaire."""
+    host = os.getenv("OLLAMA_HOST", "ollama:11434")
+    if not host.startswith(("http://", "https://")):
+        host = f"http://{host}"
+    return host.rstrip("/")
+
 async def get_ollama_response(
     messages: list[Message],
     temperature: float,
@@ -44,7 +51,7 @@ async def get_ollama_response(
     Si *model_name* est fourni, on l'utilise ; sinon on retombe sur la variable
     d'environnement MODEL_NAME ou, à défaut, « mistral »."""
 
-    ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+    ollama_host = _ollama_base()
     model_name = model_name or os.getenv("MODEL_NAME", "mistral")
     
     async with httpx.AsyncClient() as client:
@@ -437,7 +444,7 @@ async def ollama_native_tags():
     Cette route est appelée par les clients comme n8n pour remplir le menu
     déroulant des modèles.
     """
-    ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+    ollama_host = _ollama_base()
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.get(f"{ollama_host}/api/tags", timeout=10.0)
