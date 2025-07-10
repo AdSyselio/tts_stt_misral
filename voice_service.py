@@ -19,9 +19,8 @@ def list_voices() -> List[str]:
     return [p.stem for p in VOICES_DIR.glob("*.wav")]
 
 
-def save_voice_sample(audio_b64: str, name: str | None = None) -> str:
-    """Enregistre un échantillon (base64) et renvoie l'ID de la voix."""
-    voice_id = name or uuid.uuid4().hex[:12]
+def _decode_and_save(audio_b64: str, voice_id: str) -> str:
+    """Décodage commun et enregistrement du WAV dans VOICES_DIR."""
     wav_bytes = base64.b64decode(audio_b64)
     data, sr = sf.read(io.BytesIO(wav_bytes))
     if sr != 16000:
@@ -32,6 +31,35 @@ def save_voice_sample(audio_b64: str, name: str | None = None) -> str:
         sr = 16000
     sf.write(_voice_path(voice_id), data, sr)
     return voice_id
+
+
+def save_voice_sample(audio_b64: str, name: str | None = None) -> str:
+    """Enregistre un échantillon (base64) et renvoie l'ID de la voix.
+
+    Args:
+        audio_b64: Chaîne base64 de l'audio WAV/MP3.
+        name: Identifiant facultatif (sinon UUID auto).
+    """
+    voice_id = name or uuid.uuid4().hex[:12]
+    return _decode_and_save(audio_b64, voice_id)
+
+
+def save_voice_sample_from_file(txt_path: str | Path, name: str | None = None) -> str:
+    """Enregistre un échantillon audio à partir d'un fichier texte contenant la base64.
+
+    Args:
+        txt_path: Chemin du fichier texte (.txt) contenant la chaîne base64 (avec ou sans '\n').
+        name: Identifiant facultatif ; sinon généré.
+
+    Returns:
+        L'identifiant de la voix sauvegardée.
+    """
+    txt_path = Path(txt_path)
+    if not txt_path.exists():
+        raise FileNotFoundError(f"Fichier introuvable : {txt_path}")
+    audio_b64 = txt_path.read_text(encoding="utf-8").replace("\n", "").strip()
+    voice_id = name or uuid.uuid4().hex[:12]
+    return _decode_and_save(audio_b64, voice_id)
 
 
 def delete_voice(voice_id: str) -> None:

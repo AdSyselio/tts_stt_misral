@@ -1,0 +1,2 @@
+# Audio & Traitement MP3
+pydub==0.25.1 

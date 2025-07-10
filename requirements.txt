@@ -36,3 +36,8 @@ torchaudio==2.1.1
 
 # bcrypt
 bcrypt==3.2.0 
+
+# Audio & Traitement MP3
+pydub==0.25.1 
+# Compatibilité Python ≥3.13 (audioop supprimé)
+pyaudioop==0.1.0 

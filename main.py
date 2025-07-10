@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, Body, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
@@ -357,17 +357,51 @@ async def openai_compat_get_slash(
 # Gestion des voix clonées (XTTS)
 # -----------------------------------------------------------------------------
 
-class VoiceUploadRequest(BaseModel):
-    name: Optional[str] = None       # identifiant souhaité (optionnel)
-    audio: str                       # wav ou mp3 en base64 (≥ 5 secondes recommandées)
-
 class VoiceUploadResponse(BaseModel):
     voice_id: str
 
-@app.post("/voices", tags=["Voices"], response_model=VoiceUploadResponse)
-async def upload_voice(req: VoiceUploadRequest, current_user: TokenData = Depends(get_current_user)):
-    """Upload et enregistre un échantillon pour XTTS."""
-    vid = save_voice_sample(req.audio, req.name)
+
+@app.post(
+    "/voices",
+    tags=["Voices"],
+    response_model=VoiceUploadResponse,
+    summary="Upload d'un échantillon de voix",
+    description=(
+        "Permet d'uploader un échantillon audio pour XTTS.\n\n"
+        "Deux modes d'appel :\n"
+        "1. JSON : {\"audio\": \"<base64>\", \"name\": \"voix1\"}\n"
+        "2. multipart/form-data : field 'file' = fichier .txt contenant le base64, optional 'name'."
+    ),
+)
+async def upload_voice(
+    request: Request,
+    # Mode multipart/form-data
+    file: UploadFile | None = File(None, description="Fichier .txt contenant la chaîne base64"),
+    name: str | None = Form(None, description="Nom/ID souhaité (optionnel)"),
+    # Mode JSON (fallback)
+    audio: str | None = Body(None, description="Chaîne base64 si on utilise un body JSON"),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Upload et enregistre un échantillon pour XTTS (JSON ou fichier txt)."""
+
+    # Détermination de la chaîne base64
+    if file is not None:
+        # Lecture du fichier fourni
+        try:
+            content_bytes = await file.read()
+            audio_b64 = content_bytes.decode("utf-8").replace("\n", "").strip()
+        except Exception as err:
+            raise HTTPException(status_code=400, detail=f"Impossible de lire le fichier : {err}")
+    elif audio is not None:
+        audio_b64 = audio.replace("\n", "").strip()
+    else:
+        raise HTTPException(status_code=400, detail="Aucun audio fourni (champ 'audio' JSON ou fichier 'file')")
+
+    try:
+        vid = save_voice_sample(audio_b64, name)
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=str(err))
+
     return VoiceUploadResponse(voice_id=vid)
 
 @app.get("/voices", tags=["Voices"], response_model=list)
