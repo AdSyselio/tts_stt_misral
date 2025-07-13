@@ -22,7 +22,10 @@ REQUESTS = Counter('http_requests_total', 'Total des requêtes HTTP', ['method',
 LATENCY = Histogram('http_request_duration_seconds', 'Latence des requêtes HTTP', ['method', 'endpoint'])
 
 app = FastAPI(
-    title="IA Bot - Core API"
+    title="IA Bot - Core API",
+    # Configuration pour les uploads volumineux
+    max_request_size=100 * 1024 * 1024,  # 100MB max
+    timeout=300  # 5 minutes timeout
 )
 
 class ChatResponse(BaseModel):
@@ -363,6 +366,58 @@ async def openai_compat_get_slash(
     return await openai_compat_get(model, prompt, authorization, x_api_key, temperature, max_tokens)
 
 # -----------------------------------------------------------------------------
+# Route de test pour diagnostiquer les problèmes
+# -----------------------------------------------------------------------------
+
+@app.post("/test/upload", tags=["Test"], include_in_schema=False)
+async def test_upload(
+    file: UploadFile = File(..., description="Fichier de test"),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Route de test pour diagnostiquer les problèmes d'upload"""
+    try:
+        print(f"[TEST] Test upload : {file.filename}")
+        print(f"[TEST] Content-Type : {file.content_type}")
+        print(f"[TEST] Size : {file.size}")
+        
+        # Lecture du fichier
+        content = await file.read()
+        print(f"[TEST] Bytes lus : {len(content)}")
+        
+        # Test de validation WAV
+        if file.filename and file.filename.lower().endswith('.wav'):
+            try:
+                import io
+                import soundfile as sf
+                data, sr = sf.read(io.BytesIO(content))
+                print(f"[TEST] WAV valide : {len(data)} samples, {sr}Hz")
+                return {
+                    "status": "success",
+                    "message": "Fichier WAV valide",
+                    "samples": len(data),
+                    "sample_rate": sr,
+                    "duration": len(data) / sr if sr > 0 else 0
+                }
+            except Exception as e:
+                print(f"[TEST] Erreur validation WAV : {e}")
+                return {
+                    "status": "error",
+                    "message": f"Fichier WAV invalide : {str(e)}"
+                }
+        else:
+            return {
+                "status": "warning",
+                "message": "Fichier non-WAV détecté"
+            }
+            
+    except Exception as e:
+        print(f"[TEST] Erreur générale : {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+# -----------------------------------------------------------------------------
 # Gestion des voix clonées (XTTS)
 # -----------------------------------------------------------------------------
 
@@ -387,16 +442,46 @@ async def upload_voice(
     current_user: TokenData = Depends(get_current_user),
 ):
     print(f"[UPLOAD] Début upload voix : name={name}, filename={file.filename}")
-    import io
-    content_bytes = await file.read()
-    from voice_service import save_voice_wav_file
+    
+    # Validation du fichier
+    if not file.filename or not file.filename.lower().endswith('.wav'):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un fichier WAV (.wav)")
+    
+    if file.size and file.size > 50 * 1024 * 1024:  # 50MB max
+        raise HTTPException(status_code=400, detail="Le fichier est trop volumineux (max 50MB)")
+    
     try:
+        # Lecture du contenu
+        print(f"[UPLOAD] Lecture du fichier...")
+        content_bytes = await file.read()
+        print(f"[UPLOAD] Fichier lu : {len(content_bytes)} bytes")
+        
+        # Validation du contenu
+        if len(content_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Le fichier est vide")
+        
+        # Import et traitement
+        from voice_service import save_voice_wav_file
+        print(f"[UPLOAD] Début traitement avec voice_service...")
         vid = save_voice_wav_file(content_bytes, name)
+        print(f"[UPLOAD] Fin upload voix : voice_id={vid}")
+        return VoiceUploadResponse(voice_id=vid)
+        
     except Exception as err:
         print(f"[UPLOAD] Erreur traitement voix : {err}")
-        raise HTTPException(status_code=400, detail=str(err))
-    print(f"[UPLOAD] Fin upload voix : voice_id={vid}")
-    return VoiceUploadResponse(voice_id=vid)
+        print(f"[UPLOAD] Type d'erreur : {type(err).__name__}")
+        import traceback
+        print(f"[UPLOAD] Traceback : {traceback.format_exc()}")
+        
+        # Gestion spécifique des erreurs
+        if "Invalid data" in str(err) or "not a WAV file" in str(err):
+            raise HTTPException(status_code=400, detail="Le fichier n'est pas un WAV valide")
+        elif "No space left" in str(err):
+            raise HTTPException(status_code=507, detail="Espace disque insuffisant")
+        elif "Permission denied" in str(err):
+            raise HTTPException(status_code=500, detail="Erreur de permissions sur le système de fichiers")
+        else:
+            raise HTTPException(status_code=500, detail=f"Erreur lors du traitement : {str(err)}")
 
 @app.get("/voices", tags=["Voices"], response_model=list)
 async def list_available_voices(current_user: TokenData = Depends(get_current_user)):

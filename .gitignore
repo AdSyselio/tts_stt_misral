@@ -49,6 +49,7 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db 
+mp3tobase64/*
 # Samples audio générés/locales
 mp3tobase64/*.wav
 mp3tobase64/*.mp3

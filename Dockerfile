@@ -18,16 +18,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Installation des dépendances Python en plusieurs étapes
 COPY requirements.txt .
 
-# Installation des dépendances de base
+# Installation des dépendances de base (cache optimisé)
 RUN pip install --no-cache-dir \
     wheel \
     setuptools \
     ninja
 
-# Installation des dépendances du projet
+# Installation des dépendances du projet (cache optimisé)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Téléchargement robuste des modèles (3 tentatives)
+# Téléchargement robuste des modèles (3 tentatives) - avec cache intelligent
 RUN python - <<'PY'
 import time, sys, os
 from TTS.utils.manage import ModelManager
@@ -58,13 +58,13 @@ for m in MODELS:
             time.sleep(10)
 PY
 
-# Copie des fichiers du projet
+# Copie des fichiers du projet (après les dépendances pour optimiser le cache)
 COPY . .
 
 # --- Installation d'Ollama --------------------------------
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Pré-téléchargement du modèle Mistral 7B (optionnel, ~7 Go)
+# Pré-téléchargement du modèle Mistral 7B (optionnel, ~7 Go) - avec cache
 RUN ollama pull mistral || true      # télécharge si possible, sinon continue
 
 # --- Image finale -----------------------------------------

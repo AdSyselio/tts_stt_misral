@@ -80,16 +80,73 @@ def save_voice_wav_file(content_bytes: bytes, name: str | None = None) -> str:
     import io
     import uuid
     import soundfile as sf
+    import os
+    
     voice_id = name or uuid.uuid4().hex[:12]
     print(f"[PROCESS] Début traitement voix : voice_id={voice_id}")
-    wav_bytes = content_bytes
-    data, sr = sf.read(io.BytesIO(wav_bytes))
-    if sr != 16000:
-        print(f"[PROCESS] Resampling {sr}Hz -> 16000Hz pour voice_id={voice_id}")
-        import torchaudio, torch
-        res = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
-        data = res(torch.from_numpy(data).float()).numpy()
-        sr = 16000
-    sf.write(_voice_path(voice_id), data, sr)
-    print(f"[PROCESS] Fin traitement voix : voice_id={voice_id}")
-    return voice_id 
+    
+    try:
+        # Validation des bytes
+        if not content_bytes or len(content_bytes) == 0:
+            raise ValueError("Contenu audio vide")
+        
+        print(f"[PROCESS] Validation du format WAV...")
+        wav_bytes = content_bytes
+        
+        # Test de lecture avec soundfile pour valider le format
+        try:
+            data, sr = sf.read(io.BytesIO(wav_bytes))
+            print(f"[PROCESS] Audio lu : {len(data)} samples, {sr}Hz")
+        except Exception as e:
+            raise ValueError(f"Format audio invalide : {str(e)}")
+        
+        # Validation des paramètres audio
+        if len(data) == 0:
+            raise ValueError("Fichier audio vide")
+        
+        if sr <= 0:
+            raise ValueError(f"Sample rate invalide : {sr}")
+        
+        # Resampling si nécessaire
+        if sr != 16000:
+            print(f"[PROCESS] Resampling {sr}Hz -> 16000Hz pour voice_id={voice_id}")
+            try:
+                import torchaudio, torch
+                res = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
+                data = res(torch.from_numpy(data).float()).numpy()
+                sr = 16000
+                print(f"[PROCESS] Resampling terminé")
+            except Exception as e:
+                print(f"[PROCESS] Erreur resampling : {e}")
+                raise ValueError(f"Erreur lors du resampling : {str(e)}")
+        
+        # Sauvegarde du fichier
+        output_path = _voice_path(voice_id)
+        print(f"[PROCESS] Sauvegarde vers : {output_path}")
+        
+        # Création du répertoire si nécessaire
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Écriture du fichier
+        sf.write(output_path, data, sr)
+        
+        # Vérification que le fichier a bien été créé
+        if not output_path.exists():
+            raise RuntimeError("Le fichier n'a pas été créé")
+        
+        file_size = output_path.stat().st_size
+        print(f"[PROCESS] Fichier sauvegardé : {file_size} bytes")
+        
+        print(f"[PROCESS] Fin traitement voix : voice_id={voice_id}")
+        return voice_id
+        
+    except Exception as e:
+        print(f"[PROCESS] Erreur dans save_voice_wav_file : {e}")
+        # Nettoyage en cas d'erreur
+        try:
+            if 'output_path' in locals() and output_path.exists():
+                output_path.unlink()
+                print(f"[PROCESS] Fichier temporaire supprimé")
+        except:
+            pass
+        raise e 

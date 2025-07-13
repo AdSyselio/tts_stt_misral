@@ -13,6 +13,7 @@ services:
       - CUDA_VISIBLE_DEVICES=0
     volumes:
       - ./models:/app/models
+      - docker_cache:/var/lib/docker  # Cache Docker persistant
     deploy:
       resources:
         reservations:
@@ -38,4 +39,5 @@ services:
               capabilities: [gpu]
 
 volumes:
-  ollama_data: 
+  ollama_data:
+  docker_cache:  # Volume persistant pour le cache Docker 
