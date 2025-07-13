@@ -65,4 +65,28 @@ def save_voice_sample_from_file(txt_path: str | Path, name: str | None = None) -
 def delete_voice(voice_id: str) -> None:
     path = _voice_path(voice_id)
     if path.exists():
-        path.unlink() 
+        path.unlink()
+
+
+def save_voice_wav_file(content_bytes: bytes, name: str | None = None) -> str:
+    """Enregistre un échantillon audio à partir d'un fichier WAV brut (bytes).
+
+    Args:
+        content_bytes: Contenu binaire du fichier WAV.
+        name: Identifiant facultatif (sinon UUID auto).
+    Returns:
+        L'identifiant de la voix sauvegardée.
+    """
+    import io
+    import uuid
+    import soundfile as sf
+    voice_id = name or uuid.uuid4().hex[:12]
+    wav_bytes = content_bytes
+    data, sr = sf.read(io.BytesIO(wav_bytes))
+    if sr != 16000:
+        import torchaudio, torch
+        res = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
+        data = res(torch.from_numpy(data).float()).numpy()
+        sr = 16000
+    sf.write(_voice_path(voice_id), data, sr)
+    return voice_id 
