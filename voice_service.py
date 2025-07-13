@@ -81,12 +81,15 @@ def save_voice_wav_file(content_bytes: bytes, name: str | None = None) -> str:
     import uuid
     import soundfile as sf
     voice_id = name or uuid.uuid4().hex[:12]
+    print(f"[PROCESS] Début traitement voix : voice_id={voice_id}")
     wav_bytes = content_bytes
     data, sr = sf.read(io.BytesIO(wav_bytes))
     if sr != 16000:
+        print(f"[PROCESS] Resampling {sr}Hz -> 16000Hz pour voice_id={voice_id}")
         import torchaudio, torch
         res = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
         data = res(torch.from_numpy(data).float()).numpy()
         sr = 16000
     sf.write(_voice_path(voice_id), data, sr)
+    print(f"[PROCESS] Fin traitement voix : voice_id={voice_id}")
     return voice_id 

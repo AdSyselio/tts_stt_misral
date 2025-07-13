@@ -15,6 +15,7 @@ from stt_service import STTRequest, STTResponse, transcribe_audio
 from llm_service import Message, ChatRequest, get_ollama_response
 from voice_service import save_voice_sample, delete_voice, list_voices
 import uuid
+import torch
 
 # Métriques Prometheus
 REQUESTS = Counter('http_requests_total', 'Total des requêtes HTTP', ['method', 'endpoint'])
@@ -72,6 +73,14 @@ async def get_ollama_response(
             return response.json()["message"]["content"]
         except httpx.HTTPError as e:
             raise HTTPException(status_code=500, detail=f"Erreur Ollama: {str(e)}")
+
+@app.on_event("startup")
+def log_gpu_status():
+    try:
+        gpu = torch.cuda.is_available()
+        print(f"[INFO] GPU détecté : {gpu}")
+    except Exception as e:
+        print(f"[INFO] torch non disponible ou erreur détection GPU : {e}")
 
 @app.get("/", response_model=HomeResponse)
 async def home():
@@ -377,14 +386,16 @@ async def upload_voice(
     name: str | None = Form(None, description="Nom/ID souhaité (optionnel)"),
     current_user: TokenData = Depends(get_current_user),
 ):
-    """Upload et enregistre un échantillon WAV pour XTTS (fichier uniquement)."""
+    print(f"[UPLOAD] Début upload voix : name={name}, filename={file.filename}")
     import io
     content_bytes = await file.read()
     from voice_service import save_voice_wav_file
     try:
         vid = save_voice_wav_file(content_bytes, name)
     except Exception as err:
+        print(f"[UPLOAD] Erreur traitement voix : {err}")
         raise HTTPException(status_code=400, detail=str(err))
+    print(f"[UPLOAD] Fin upload voix : voice_id={vid}")
     return VoiceUploadResponse(voice_id=vid)
 
 @app.get("/voices", tags=["Voices"], response_model=list)
